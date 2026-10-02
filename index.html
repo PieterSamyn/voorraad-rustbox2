@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voorraadbeheer Rustboxen</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QRCode JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        teal: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <header class="bg-teal-700 text-white shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2.5 bg-teal-600 rounded-xl shadow-inner">
+                        <i class="fa-solid fa-box-archive text-2xl text-teal-100"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-tight">Voorraadbeheer Rustboxen</h1>
+                        <p class="text-teal-200 text-sm">Overzicht van materialen in kast & rustboxen</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2 w-full sm:w-auto justify-end flex-wrap gap-y-2">
+                    <button onclick="openManageBoxesModal()" class="flex-1 sm:flex-none items-center justify-center inline-flex px-3 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded-lg font-medium transition text-sm shadow-sm">
+                        <i class="fa-solid fa-boxes-packing mr-2"></i> Rustboxen Beheren
+                    </button>
+                    <button onclick="openBackupModal()" class="flex-1 sm:flex-none items-center justify-center inline-flex px-3 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded-lg font-medium transition text-sm shadow-sm">
+                        <i class="fa-solid fa-floppy-disk mr-2"></i> Backup / Delen
+                    </button>
+                    <button onclick="openQrModal()" class="flex-1 sm:flex-none items-center justify-center inline-flex px-3 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg font-medium transition text-sm shadow-sm">
+                        <i class="fa-solid fa-qrcode mr-2"></i> QR Code
+                    </button>
+                    <button onclick="openAddModal()" class="flex-1 sm:flex-none items-center justify-center inline-flex px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-lg font-semibold transition text-sm shadow-sm">
+                        <i class="fa-solid fa-plus mr-2"></i> Nieuw Materiaal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 no-print">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-lg text-xl">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 font-medium uppercase tracking-wider block">Soorten Materialen</span>
+                    <span id="stat-total-types" class="text-2xl font-bold text-slate-800">0</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg text-xl">
+                    <i class="fa-solid fa-warehouse"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 font-medium uppercase tracking-wider block">In Voorraadkast</span>
+                    <span id="stat-in-cabinet" class="text-2xl font-bold text-slate-800">0</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="p-3 bg-amber-50 text-amber-600 rounded-lg text-xl">
+                    <i class="fa-solid fa-box-open"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 font-medium uppercase tracking-wider block">In Rustboxen</span>
+                    <span id="stat-in-boxes" class="text-2xl font-bold text-slate-800">0</span>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="p-3 bg-purple-50 text-purple-600 rounded-lg text-xl">
+                    <i class="fa-solid fa-cubes"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-500 font-medium uppercase tracking-wider block">Totaal Stuks</span>
+                    <span id="stat-total-items" class="text-2xl font-bold text-purple-700">0</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 no-print">
+            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+                <!-- Search input -->
+                <div class="relative w-full md:w-80">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="search-input" oninput="renderMaterials()" placeholder="Zoek op naam of beschrijving..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                </div>
+
+                <!-- Category & Stock filters -->
+                <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    <select id="category-filter" onchange="renderMaterials()" class="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <option value="ALL">Alle Categorieën</option>
+                        <option value="Gehoor">Gehoor / Geluid</option>
+                        <option value="Tactiel">Tactiel / Fidgets</option>
+                        <option value="Visueel">Visueel</option>
+                        <option value="Rust & Druk">Druk & Gewicht</option>
+                        <option value="Creatief">Creatief & Boeken</option>
+                        <option value="Overig">Overig</option>
+                    </select>
+
+                    <select id="box-filter" onchange="renderMaterials()" class="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <option value="ALL">Alle Locaties & Boxen</option>
+                        <option value="LOW">Lage Voorraad (&lt; min)</option>
+                        <option value="IN_CABINET">In Voorraadkast</option>
+                    </select>
+
+                    <!-- View Switcher -->
+                    <div class="flex bg-slate-100 p-1 rounded-lg ml-auto md:ml-2">
+                        <button id="view-grid-btn" onclick="setViewMode('grid')" class="px-3 py-1 text-sm rounded-md font-medium text-slate-700 bg-white shadow-sm">
+                            <i class="fa-solid fa-border-all"></i>
+                        </button>
+                        <button id="view-table-btn" onclick="setViewMode('table')" class="px-3 py-1 text-sm rounded-md font-medium text-slate-500 hover:text-slate-700">
+                            <i class="fa-solid fa-list"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="materials-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Dynamic Material Cards or Table will be injected here -->
+        </section>
+
+        <!-- Empty state message -->
+        <div id="empty-state" class="hidden text-center py-16 bg-white rounded-xl border border-dashed border-slate-300">
+            <i class="fa-solid fa-box-open text-5xl text-slate-300 mb-3"></i>
+            <h3 class="text-lg font-semibold text-slate-700">Geen materialen gevonden</h3>
+            <p class="text-slate-500 text-sm mt-1 mb-4">Probeer een andere zoekopdracht of voeg nieuw materiaal toe.</p>
+            <button onclick="openAddModal()" class="inline-flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg font-medium text-sm hover:bg-teal-700">
+                <i class="fa-solid fa-plus mr-2"></i> Materiaal Toevoegen
+            </button>
+        </div>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8 no-print">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <span>&copy; Voorraadbeheer Rustboxen - Eenvoudig & Snel</span>
+            <div class="space-x-4">
+                <button onclick="resetToDefaultData()" class="text-slate-400 hover:text-rose-600 transition">
+                    <i class="fa-solid fa-rotate-left mr-1"></i> Herstel Voorbeeldgegevens
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <div id="material-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
+                <h3 id="modal-title" class="text-xl font-bold text-slate-800">Nieuw Materiaal Toevoegen</h3>
+                <button onclick="closeMaterialModal()" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="material-form" onsubmit="saveMaterial(event)" class="p-6 space-y-4">
+                <input type="hidden" id="item-id">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Naam van het materiaal *</label>
+                    <input type="text" id="item-name" required placeholder="bijv. Geluiddempende koptelefoon" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Categorie</label>
+                        <select id="item-category" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white">
+                            <option value="Gehoor">Gehoor / Geluid</option>
+                            <option value="Tactiel">Tactiel / Fidgets</option>
+                            <option value="Visueel">Visueel</option>
+                            <option value="Rust & Druk">Druk & Gewicht</option>
+                            <option value="Creatief">Creatief & Boeken</option>
+                            <option value="Overig">Overig</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Min. Totaal (Drempel)</label>
+                        <input type="number" id="item-min" min="0" value="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
+                    <label class="block text-sm font-bold text-emerald-900 mb-1">Aantal nu in Voorraadkast</label>
+                    <input type="number" id="item-cabinet" min="0" value="0" class="w-full px-3 py-2 border border-emerald-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Aantallen in Rustboxen</label>
+                    <div id="modal-boxes-inputs" class="grid grid-cols-3 sm:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200 max-h-40 overflow-y-auto">
+                        <!-- Dynamic box input fields injected here -->
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Foto van het materiaal</label>
+                    <div class="flex gap-2 mb-2">
+                        <input type="url" id="item-image-url" oninput="updateImagePreview()" placeholder="https://example.com/foto.jpg" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                        <button type="button" onclick="clearImage()" id="clear-image-btn" class="hidden px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-medium border border-slate-300 transition">
+                            <i class="fa-solid fa-trash mr-1"></i> Verwijder
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-500">
+                        <span>Of upload direct een foto (wordt gecomprimeerd):</span>
+                        <input type="file" id="image-file-input" accept="image/*" onchange="handleImageUpload(event)" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
+                    </div>
+                    <div id="image-preview-container" class="mt-2 hidden flex items-center gap-3 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                        <img id="image-preview" src="" class="h-16 w-16 object-cover rounded-lg border border-slate-300 shadow-sm">
+                        <span class="text-xs text-emerald-700 font-medium"><i class="fa-solid fa-circle-check mr-1"></i> Afbeelding geladen</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Opmerkingen / Extra info</label>
+                    <textarea id="item-notes" rows="2" placeholder="bijv. Merk, afmeting of instructies voor gebruik..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"></textarea>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex justify-end space-x-2">
+                    <button type="button" onclick="closeMaterialModal()" class="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">Annuleren</button>
+                    <button type="submit" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-semibold shadow-sm">Opslaan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="manage-boxes-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-boxes-packing text-teal-600 mr-2"></i>Rustboxen Beheren</h3>
+                <button onclick="closeManageBoxesModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-500 mb-4">Voeg een nieuwe rustbox toe of verwijder een bestaande box uit de lijst.</p>
+
+            <form onsubmit="handleAddNewBox(event)" class="flex gap-2 mb-4">
+                <input type="text" id="new-box-name" placeholder="bijv. Rustbox 13" required class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                <button type="submit" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-semibold transition">
+                    <i class="fa-solid fa-plus mr-1"></i> Toevoegen
+                </button>
+            </form>
+
+            <div class="border-t border-slate-100 pt-3">
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Bestaande Rustboxen (<span id="box-count-label">0</span>)</label>
+                <div id="boxes-list-container" class="max-h-60 overflow-y-auto space-y-2 pr-1">
+                    <!-- Dynamic list of box items -->
+                </div>
+            </div>
+
+            <div class="mt-6 pt-3 border-t border-slate-100 flex justify-end">
+                <button onclick="closeManageBoxesModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium">Sluiten</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="qr-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-800">QR-code voor Mobiel</h3>
+                <button onclick="closeQrModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <p class="text-xs text-slate-500 mb-3">Scan deze QR-code met je smartphone of tablet om direct de voorraadlijst te openen.</p>
+
+            <div id="qr-url-warning" class="hidden mb-3 p-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs text-left">
+                <i class="fa-solid fa-circle-info text-amber-600 mr-1"></i>
+                <strong>Mobiel scannen:</strong> Vul hieronder de online web-URL van de school in waarnaar de QR-code moet verwijzen:
+            </div>
+
+            <div class="mb-3 text-left">
+                <label class="block text-[11px] font-semibold text-slate-600 mb-1">Web-URL van de pagina:</label>
+                <div class="flex gap-1">
+                    <input type="text" id="custom-qr-url" placeholder="https://..." class="flex-1 px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                    <button onclick="generateQrFromInput()" class="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-semibold shrink-0">
+                        <i class="fa-solid fa-rotate mr-1"></i> Update
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 inline-block mb-3">
+                <div id="qrcode-canvas" class="flex justify-center"></div>
+            </div>
+
+            <div class="text-xs text-slate-400 break-all mb-4 bg-slate-100 p-2 rounded" id="qr-link-text">
+                <!-- Current page URL -->
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="window.print()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-medium">
+                    <i class="fa-solid fa-print mr-1"></i> Print QR-code
+                </button>
+                <button onclick="closeQrModal()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium">Sluiten</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="backup-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-floppy-disk text-teal-600 mr-2"></i>Backup & Gegevens Overdragen</h3>
+                <button onclick="closeBackupModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-600 mb-4">
+                Sla een reservekopie op van al je ingevoerde materialen of laad een eerder opgeslagen bestand in.
+            </p>
+
+            <div class="space-y-3">
+                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl">
+                    <h4 class="font-bold text-slate-800 text-xs mb-1"><i class="fa-solid fa-download text-teal-600 mr-1.5"></i>1. Reservekopie opslaan (Export)</h4>
+                    <p class="text-[11px] text-slate-500 mb-2">Download al je materialen en rustboxen als bestand op je pc.</p>
+                    <button onclick="exportDataToFile()" class="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg text-xs shadow-sm flex items-center justify-center">
+                        <i class="fa-solid fa-file-arrow-down mr-1.5"></i> Reservekopie Downloaden (.json)
+                    </button>
+                </div>
+
+                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl">
+                    <h4 class="font-bold text-slate-800 text-xs mb-1"><i class="fa-solid fa-upload text-amber-600 mr-1.5"></i>2. Reservekopie laden (Import)</h4>
+                    <p class="text-[11px] text-slate-500 mb-2">Laad je opgeslagen reservekopie in op een ander toestel of browser.</p>
+                    <input type="file" id="import-file-input" accept=".json" onchange="importDataFromFile(event)" class="hidden">
+                    <button onclick="document.getElementById('import-file-input').click()" class="w-full py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-lg text-xs shadow-sm flex items-center justify-center">
+                        <i class="fa-solid fa-file-arrow-up mr-1.5"></i> Reservekopie Inladen (.json)
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                <button onclick="closeBackupModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium">Sluiten</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center">
+            <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800 mb-2">Materiaal Verwijderen?</h3>
+            <p class="text-sm text-slate-500 mb-6">Weet je zeker dat je "<span id="delete-item-name" class="font-semibold text-slate-700"></span>" wilt verwijderen uit de lijst?</p>
+            
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50">Annuleren</button>
+                <button id="confirm-delete-btn" class="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-semibold">Verwijderen</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-sm flex items-center gap-3 transition-all duration-300 transform translate-y-20 opacity-0 z-50">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toast-message">Actie succesvol uitgevoerd</span>
+    </div>
+
+    <script>
+        const DEFAULT_BOXES = Array.from({ length: 12 }, (_, i) => `Rustbox ${i + 1}`);
+        let boxNames = [];
+
+        // Sample Initial Data for Rustboxen Materials
+        const INITIAL_MATERIALS = [
+            {
+                id: 'm-1',
+                name: 'Geluidsdempende Koptelefoon',
+                category: 'Gehoor',
+                inCabinet: 4,
+                boxes: { 'Rustbox 1': 1, 'Rustbox 2': 1, 'Rustbox 3': 1 },
+                minThreshold: 2,
+                image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80',
+                notes: 'Merk: Peltor Kid. Geschikt voor prikkelverwerking.'
+            },
+            {
+                id: 'm-2',
+                name: 'Verwaard Schootkussen (2 kg)',
+                category: 'Rust & Druk',
+                inCabinet: 2,
+                boxes: { 'Rustbox 1': 1, 'Rustbox 2': 1 },
+                minThreshold: 1,
+                image: 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=400&q=80',
+                notes: 'Zachte hoes, blauw. Biedt diepe druk.'
+            },
+            {
+                id: 'm-3',
+                name: 'Visual Timer / Zandloper',
+                category: 'Visueel',
+                inCabinet: 5,
+                boxes: { 'Rustbox 1': 1, 'Rustbox 3': 1 },
+                minThreshold: 2,
+                image: 'https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?w=400&q=80',
+                notes: 'Rode schijf 60 minuten.'
+            },
+            {
+                id: 'm-4',
+                name: 'Stressbal / Squishy Dieren',
+                category: 'Tactiel',
+                inCabinet: 8,
+                boxes: { 'Rustbox 1': 2, 'Rustbox 2': 2, 'Rustbox 3': 1, 'Rustbox 4': 1 },
+                minThreshold: 5,
+                image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&q=80',
+                notes: 'Afwasbaar materiaal.'
+            },
+            {
+                id: 'm-5',
+                name: 'Tangle / Fidget Ring',
+                category: 'Tactiel',
+                inCabinet: 1,
+                boxes: { 'Rustbox 1': 1, 'Rustbox 2': 1, 'Rustbox 3': 1, 'Rustbox 4': 1 },
+                minThreshold: 3,
+                image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80',
+                notes: 'Gekleurde kunststof schakels.'
+            },
+            {
+                id: 'm-6',
+                name: 'Anti-stress Kleurboek & Stiften',
+                category: 'Creatief',
+                inCabinet: 6,
+                boxes: { 'Rustbox 1': 1, 'Rustbox 2': 1, 'Rustbox 3': 1 },
+                minThreshold: 2,
+                image: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=400&q=80',
+                notes: 'Mandala thema met dikke viltstiften.'
+            }
+        ];
+
+        let materials = [];
+        let viewMode = 'grid'; // 'grid' or 'table'
+        let pendingDeleteId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadBoxNames();
+            loadMaterials();
+            renderMaterials();
+            setupQrCode();
+        });
+
+        function loadBoxNames() {
+            const stored = localStorage.getItem('rustbox_names');
+            if (stored) {
+                try {
+                    boxNames = JSON.parse(stored);
+                } catch (e) {
+                    boxNames = [...DEFAULT_BOXES];
+                }
+            } else {
+                boxNames = [...DEFAULT_BOXES];
+                saveBoxNames();
+            }
+            renderBoxFilterOptions();
+        }
+
+        function saveBoxNames() {
+            localStorage.setItem('rustbox_names', JSON.stringify(boxNames));
+        }
+
+        function renderBoxFilterOptions() {
+            const select = document.getElementById('box-filter');
+            const currentValue = select.value;
+
+            let html = `
+                <option value="ALL">Alle Locaties & Boxen</option>
+                <option value="LOW">Lage Voorraad (&lt; min)</option>
+                <option value="IN_CABINET">In Voorraadkast</option>
+            `;
+
+            boxNames.forEach(box => {
+                html += `<option value="${escapeHtml(box)}">In ${escapeHtml(box)}</option>`;
+            });
+
+            select.innerHTML = html;
+            if (boxNames.includes(currentValue) || ['ALL', 'LOW', 'IN_CABINET'].includes(currentValue)) {
+                select.value = currentValue;
+            } else {
+                select.value = 'ALL';
+            }
+        }
+
+        function sanitizeItem(item) {
+            if (!item.boxes) {
+                item.boxes = {};
+            }
+            boxNames.forEach(box => {
+                if (item.boxes[box] === undefined) {
+                    item.boxes[box] = 0;
+                }
+            });
+            return item;
+        }
+
+        function getBoxesTotal(item) {
+            if (!item.boxes) return 0;
+            return Object.values(item.boxes).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+        }
+
+        function loadMaterials() {
+            const stored = localStorage.getItem('rustbox_materials');
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    materials = parsed.map(sanitizeItem);
+                } catch (e) {
+                    console.error('Error loading data:', e);
+                    materials = INITIAL_MATERIALS.map(sanitizeItem);
+                }
+            } else {
+                materials = INITIAL_MATERIALS.map(sanitizeItem);
+                saveToLocalStorage();
+            }
+        }
+
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('rustbox_materials', JSON.stringify(materials));
+            } catch (e) {
+                console.error('LocalStorage error:', e);
+                showToast('Fout bij opslaan (geheugen vol). Verklein de foto.', 'fa-triangle-exclamation', 'text-rose-400');
+            }
+        }
+
+        function resetToDefaultData() {
+     
